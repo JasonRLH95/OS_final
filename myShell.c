@@ -3,6 +3,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <stdbool.h>
+#include <sys/wait.h>
 #include "myShell.h"
 #include "myFunctionsShell.h"
 
@@ -70,6 +71,19 @@ void welcome() {
     printf("\033[1;34mYou can type any shell command\033\n");
     printf("\033[0;33m  or\033\n");
     printf("\033[1;36mType 'exit' to quit.\033\n\n\n");
+}
+
+
+// ---------------------------------------
+// function that stops the program
+// ---------------------------------------
+void logout(){
+    // closing the terminal - loading bar effect
+    for (int i = 1; i <= 100; i++) {
+        loadingBar(i, 100, "Loging out");
+        usleep(20000);
+    }
+    printf("\n\n\n");
 }
 
 // ---------------------------------------
@@ -179,21 +193,40 @@ char **splitInput(char *input) {
 // ---------------------------------------
 // function that manage the commands according to the arguments
 // ---------------------------------------
-void executeCommand(char *input) {
+bool executeCommand(char *input) {
     char **args = splitInput(input);
 
     int count = 0;
-    printf("\n");
-    printf("[");
+    // => check if any of the arguments of the splited input is "exit" if so then ignoring the rest arguments and exiting program
     while(args[count] != NULL){
-        printf("%s\\0,",args[count]);
+        if(strcmp(args[count], "exit") == 0){
+            logout();
+            free(args);
+            return false;
+        }
         count++;
     }
-    printf("%s",args[count]);
-    printf("]");
-    printf("\n");
+    // otherwise execute command
+    if(args[0] == NULL){
+        free(args);
+        return true;
+    } else {
+        pid_t pid = fork();
+        if (pid == 0) {
+            if (execvp(args[0], args) == -1) {
+                perror("Error executing command");
+            }
+            exit(EXIT_FAILURE);
+        } else if (pid < 0) {
+            perror("Error forking");
+        } else {
+            int status;
+            waitpid(pid, &status, 0);
+        }
+    }
     
-    free(args);  
+    free(args);
+    return true;
 }
 
 
@@ -206,19 +239,14 @@ int main(int argc, char const *argv[]) {
 
         char *input = inputFromUser();
 
-        if (strcmp(input, "exit") == 0) {// closing the terminal errect of the loading bar
-            for (int i = 1; i <= 100; i++) {
-                loadingBar(i, 100, "Loging out");
-                usleep(20000);
-            }
-            printf("\n\n\n");
+        // => check if any of the arguments of the splited input is "exit" if so then ignoring the rest arguments and exiting program
+        if(!executeCommand(input)){
             free(input);
             break;
-        }
-        // On the executeCommand() I've took the input, and with the splitInput() ive created an array of arguments,  and displayed them at an array as You requested
-        executeCommand(input);
+        };
         free(input);
     }
 
     return 0;
 }
+
