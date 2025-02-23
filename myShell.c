@@ -122,10 +122,25 @@ void getLocation() {
     printf(":%s", location);
     printf("\033[0m$ ");
 
-
-    // fflush(stdout); // force immediate display of that line
 }
 
+// ---------------------------------------------------------------------------------------------------------------------------------------
+// commands
+// ---------------------------------------------------------------------------------------------------------------------------------------
+void cd(char **args) {
+    if (args[1] == NULL) {
+        fprintf(stderr, "Error: No directory specified\n");
+        return;
+    } else if (args[2] != NULL){
+        fprintf(stderr, "cd: too many arguments\n");
+        return;
+    }else {
+        if (chdir(args[1]) != 0) {
+            perror("Error - Can't change directory");
+            return;
+        }
+    }
+}
 
 // ---------------------------------------
 // function that get the input from the user and split it into arguments
@@ -210,6 +225,8 @@ bool executeCommand(char *input) {
     if(args[0] == NULL){
         free(args);
         return true;
+    } else if (strcmp(args[0], "cd") == 0) {
+        cd(args);
     } else {
         pid_t pid = fork();
         if (pid == 0) {
