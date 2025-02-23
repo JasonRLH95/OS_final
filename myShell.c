@@ -4,6 +4,8 @@
 #include <string.h>
 #include <stdbool.h>
 #include <sys/wait.h>
+#include <sys/stat.h>
+#include <dirent.h>
 #include "myShell.h"
 #include "myFunctionsShell.h"
 
@@ -127,6 +129,9 @@ void getLocation() {
 // ---------------------------------------------------------------------------------------------------------------------------------------
 // commands
 // ---------------------------------------------------------------------------------------------------------------------------------------
+// ----------------------------
+// handle cd command - change directory
+// ----------------------------
 void cd(char **args) {
     if (args[1] == NULL) {
         fprintf(stderr, "Error: No directory specified\n");
@@ -139,6 +144,106 @@ void cd(char **args) {
             perror("Error - Can't change directory");
             return;
         }
+    }
+}
+
+// ----------------------------
+// for cp command - copy file handling
+// ----------------------------
+void copyFile(const char *src, const char *dest) {
+    FILE *source = fopen(src, "rb");// => open file to read
+    if (source == NULL) {
+        perror("cp: source error");
+        return;
+    }
+
+    FILE *destination = fopen(dest, "wb");// => open file to write
+    if (destination == NULL) {
+        perror("cp: destination error");
+        fclose(source);//make sure to close src file
+        return;
+    }
+
+    char buffer[1024];
+    size_t bytes;
+    while ((bytes = fread(buffer, 1, sizeof(buffer), source)) > 0) {
+        fwrite(buffer, 1, bytes, destination);// => the actual copy from the src to destination
+    }
+
+    // make sure of closing them both when done
+    fclose(source);
+    fclose(destination);
+}
+
+// ----------------------------
+// for cp command - copy directory handling
+// ----------------------------
+void copyDirectory(const char *src, const char *dest) {
+    struct stat st;// => system structure that stores information about a file (e.g., size, permissions, type, timestamps).
+    if (stat(dest, &st) == -1) {// => set the pointer st to the destination path, if the stat of it is -1 then the path isn't exist
+        if (mkdir(dest, 0755) != 0) {// create the destination path directory with permissions of: owner-read/write/execute | others-read/execute.
+            perror("cp: mkdir error");// => if creation faild
+            return;
+        }
+    }
+
+    DIR *dir = opendir(src);// => open directory for reading
+    if (!dir) {// => if src invalid/doesn't exist/no permission
+        perror("cp: source directory error");
+        return;
+    }
+
+    struct dirent *entry;// => set a pointer to a directory
+    while ((entry = readdir(dir)) != NULL) {// read current directory pointer
+        // ignore of the current and previous directories to avoid double check
+        if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
+            continue;
+        }
+
+        char srcPath[1024];
+        char destPath[1024];
+
+        snprintf(srcPath, sizeof(srcPath), "%s/%s", src, entry->d_name);// => set the src/d_name string as the srcPath, prevents buffer overflow with sizeof
+        snprintf(destPath, sizeof(destPath), "%s/%s", dest, entry->d_name);// => set the src/d_name string as the srcPath, ensure buffer safety by limiting size
+
+        if (stat(srcPath, &st) == 0) { // make sure that the src file exists and can be accessed.
+            if (S_ISDIR(st.st_mode)) { // => check if represent as directory
+                copyDirectory(srcPath, destPath);
+            } else if (S_ISREG(st.st_mode)) {// => check if represent as regular file
+                copyFile(srcPath, destPath);
+            }
+        }
+    }
+    closedir(dir);// close directory when done
+}
+
+// ----------------------------
+// handle cp command - copy
+// ----------------------------
+void cp(char **args) {
+    // must include source and destination provided
+    if (args[1] == NULL || args[2] == NULL) {
+        fprintf(stderr, "cp: source and destination required\n");
+        return;
+    }
+
+    struct stat st; // => system structure that stores information about a file (e.g., size, permissions, type, timestamps).
+    if (stat(args[1], &st) != 0) { // make sure that file exists and can be accessed.
+        perror("cp: source error");
+        return;
+    }
+
+    if (S_ISDIR(st.st_mode)) {// => check if represent as directory
+        copyDirectory(args[1], args[2]);
+        printf("Directory copied successfully\n");
+        return;
+    } else if (S_ISREG(st.st_mode)) {// => check if represent as regular file
+        copyFile(args[1], args[2]);
+        printf("File copied successfully\n");
+        return;
+    } else {
+        fprintf(stderr, "cp: unsupported file type\n");
+        return;
     }
 }
 
@@ -227,7 +332,9 @@ bool executeCommand(char *input) {
         return true;
     } else if (strcmp(args[0], "cd") == 0) {
         cd(args);
-    } else {
+    } else if (strcmp(args[0], "cp") == 0) {
+        cp(args);
+    }  else {
         pid_t pid = fork();
         if (pid == 0) {
             if (execvp(args[0], args) == -1) {
