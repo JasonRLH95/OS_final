@@ -365,6 +365,50 @@ void delete(char **args){
     }
 }
 
+// ----------------------------
+// handle pipe - example: the command "ls -l | grep g"
+// creates two child processes, one runs "ls -l" and sends its output into a pipe, the other reads from that pipe and runs grep g
+// ----------------------------
+void mypipe(char **argv1, char **argv2){
+    
+    int fd[2];
+    if(pipe(fd) == -1){ // => make sure pipe creation success
+        perror("pipe creation failed");
+        exit(EXIT_FAILURE);
+    }
+
+    if (fork() == 0){// => creates first child process
+        if (fork() == 0){// => creates second child process
+            close(STDOUT_FILENO);// prevent the standart output of the grandchild process "ls -l"
+            dup2(fd[1], STDOUT_FILENO);// redirects that output to the child process "grep g" => the pipe's write end
+            // close both pipes ends
+            close(fd[0]);
+            close(fd[1]);
+            if(execvp(argv1[0], argv1) == -1){// executing the "ls -l" command, if failed returns an error and exits
+                perror("execvp error");
+                exit(EXIT_FAILURE);
+            }
+            exit(EXIT_SUCCESS);// prevent that process from running unpredictably
+        }
+
+        close(STDIN_FILENO);// prevent the child process "grep g" from getting the standart input exits
+        dup2(fd[0], STDIN_FILENO);//redirects the input from the grandchild process "ls -l" => the pipe's read end
+        // close both pipes ends
+        close(fd[1]);
+        close(fd[0]);
+        if(execvp(argv2[0], argv2) == -1){// executing the "grep g" command, if failed returns an error and exits
+            perror("execvp error");
+            exit(EXIT_FAILURE);
+        };
+        exit(EXIT_SUCCESS);// prevent that process from running unpredictably
+    }
+    // make sure to close both pipes ends and wait for both child processes to finish
+    close(fd[0]);
+    close(fd[1]);
+    wait(NULL);
+    wait(NULL);
+}
+
 // ---------------------------------------------------------------------------------------------------------------------------------------
 // Main execution for the commands
 // ---------------------------------------------------------------------------------------------------------------------------------------
@@ -423,7 +467,7 @@ char **splitInput(char *input) {
     }
 
     if (start) {
-        //move to next token
+        // => ensure the last token is added to tokens[] before returning the array
         tokens[position++] = start;
     }
 
@@ -433,11 +477,49 @@ char **splitInput(char *input) {
 }
 
 // ---------------------------------------
+// if arguments containing a pipe symbol then split the arguments array into two arguments arrays
+// ---------------------------------------
+void splitByPipe(char **tokens) {
+    char **leftArgs = NULL;
+    char **rightArgs = NULL;
+    int i = 0, leftCount = 0, rightCount = 0;
+    bool foundPipe = false;
+
+    while (tokens[i]) {
+        if (strcmp(tokens[i], "|") == 0) {
+            foundPipe = true;
+            i++;
+            continue;
+        }
+        // as long as pipe didnt found between the arguments => add the tokens one by one to the leftArgs array, whenever found the pipe, add the rest tokens to the rightArgs array
+        if (!foundPipe) {
+            leftArgs = realloc(leftArgs, (leftCount + 1) * sizeof(char *));
+            leftArgs[leftCount++] = tokens[i];
+        } else {
+            rightArgs = realloc(rightArgs, (rightCount + 1) * sizeof(char *));
+            rightArgs[rightCount++] = tokens[i];
+        }
+        i++;
+    }
+
+    // Null-terminate both arrays
+    leftArgs = realloc(leftArgs, (leftCount + 1) * sizeof(char *));
+    leftArgs[leftCount] = NULL;
+    rightArgs = realloc(rightArgs, (rightCount + 1) * sizeof(char *));
+    rightArgs[rightCount] = NULL;
+
+    mypipe(leftArgs,rightArgs); // => send them both to mypipe function
+    // free the memory allocated after execute the command
+    free(leftArgs);
+    free(rightArgs);
+}
+
+// ---------------------------------------
 // function that manage the commands according to the arguments
 // ---------------------------------------
 bool executeCommand(char *input) {
     char **args = splitInput(input);
-
+    
     int count = 0;
     // => check if any of the arguments of the splited input is "exit" if so then ignoring the rest arguments and exiting program
     while(args[count] != NULL){
@@ -445,6 +527,10 @@ bool executeCommand(char *input) {
             logout();
             free(args);
             return false;
+        }
+        else if(strcmp(args[count], "|") == 0){
+            splitByPipe(args);
+            return true;
         }
         count++;
     }
