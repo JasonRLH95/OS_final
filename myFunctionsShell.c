@@ -460,6 +460,9 @@ void echowrite(char **args) {
     close(fd);
 }
 
+// ----------------------------
+// read the file and print his content to the console
+// ----------------------------
 void _read(char **args) {
     if (args[1] == NULL) {
         fprintf(stderr, "Usage: read <file>\n");
@@ -475,6 +478,48 @@ void _read(char **args) {
     while ((ch = fgetc(file)) != EOF) {
         // => reads a file character by character using fgetc(file) until it reaches the end of the file (EOF)
         putchar(ch);// => prints the character to the console
+    }
+    fclose(file);
+}
+
+// ----------------------------
+// count the words/ lines of the file
+// ----------------------------
+void wordCount(char **args) {
+    if (args[1] == NULL || args[2] == NULL) {
+        fprintf(stderr, "Usage: wc -l/-w <file>\n");
+        return;
+    }
+    FILE *file = fopen(args[2], "r"); // => open the file to read only
+    if (!file) {
+        perror("read error");
+        return;
+    }
+    int count = 0;
+    char ch;
+    if (strcmp(args[1], "-l") == 0) {
+        // as long as we didnt get to the end of the file, count the lines
+        while ((ch = fgetc(file)) != EOF) {
+            if (ch == '\n') {
+                count++;
+            }
+        }
+        printf("Lines: %d\n", count);
+    } else if (strcmp(args[1], "-w") == 0) {
+        int inWord = 0;
+        // as long as we didnt get to the end of the file, count the words
+        while ((ch = fgetc(file)) != EOF) {
+            // if char is a space/line break/tab => don't count
+            if (ch == ' ' || ch == '\n' || ch == '\t') {
+                inWord = 0;
+            } else if(inWord == 0){
+                inWord = 1;
+                count++;
+            }
+        }
+        printf("Words: %d\n", count);
+    } else {
+        fprintf(stderr, "Invalid option: %s\n", args[1]);
     }
     fclose(file);
 }
@@ -689,6 +734,8 @@ bool executeCommand(char *input) {
         move(args);
     } else if (strcmp(args[0], "read") == 0) {
         _read(args);
+    } else if (strcmp(args[0], "wc") == 0) {
+        wordCount(args);
     } else {
         pid_t pid = fork();
         if (pid == 0) {
