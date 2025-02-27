@@ -409,6 +409,20 @@ void mypipe(char **argv1, char **argv2){
     wait(NULL);
 }
 
+// ----------------------------
+// function that moves a file/directory from src to dest path,
+// its copying the src content to the dest position and then delete the src
+// ----------------------------
+void move(char **args) {
+    if (args[1] == NULL || args[2] == NULL) {// => make sure to have src and dest paths
+        fprintf(stderr, "Usage: mv <source> <destination>\n");
+        return;
+    }
+    if (rename(args[1], args[2]) != 0) {// => copy and delete content from src to dest position, if fails returns an error
+        perror("mv");
+    }
+}
+
 // ---------------------------------------------------------------------------------------------------------------------------------------
 // Main execution for the commands
 // ---------------------------------------------------------------------------------------------------------------------------------------
@@ -544,6 +558,8 @@ bool executeCommand(char *input) {
         cp(args);
     } else if (strcmp(args[0], "rm") == 0) {
         delete(args);
+    } else if (strcmp(args[0], "mv") == 0) {
+        move(args);
     } else {
         pid_t pid = fork();
         if (pid == 0) {
