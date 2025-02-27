@@ -425,23 +425,37 @@ void move(char **args) {
 }
 
 // ----------------------------
-// 
+// append a text inside a txt file without erasing the previous content
 // ----------------------------
 void echoppend(char **args) {
-    if(strcmp(args[2], ">>") != 0){
-        fprintf(stderr, "Usage: <text> should be inside of a quotes\n");
-        return;
-    }
-    if (args[1] == NULL || args[3] == NULL) {
+    if (args[0] == NULL || args[1] == NULL) {
         fprintf(stderr, "Usage: echo <text> >> <file>\n");
         return;
     }
-    int fd = open(args[3], O_WRONLY | O_CREAT | O_APPEND, 0644);
+    int fd = open(args[1], O_WRONLY | O_CREAT | O_APPEND, 0644);
     if (fd == -1) {
         perror("echo append error");
         return;
     }
-    write(fd, args[1], strlen(args[1]));
+    write(fd, args[0], strlen(args[0]));
+    write(fd, "\n", 1);
+    close(fd);
+}
+
+// ----------------------------
+// write a text inside a txt file and erasing the previous content
+// ----------------------------
+void echowrite(char **args) {
+    if (args[0] == NULL || args[1] == NULL) {
+        fprintf(stderr, "Usage: echo <text> > <file>\n");
+        return;
+    }
+    int fd = open(args[1], O_WRONLY | O_CREAT | O_TRUNC, 0644);
+    if (fd == -1) {
+        perror("echo append error");
+        return;
+    }
+    write(fd, args[0], strlen(args[0]));
     write(fd, "\n", 1);
     close(fd);
 }
@@ -551,6 +565,72 @@ void splitByPipe(char **tokens) {
     free(rightArgs);
 }
 
+// ---------------------------------------
+// if arguments containing the >> or > symbols then rearrange the arguments array to the form: [<text>,<path>]
+// ---------------------------------------
+void echoSplit(char **args){
+
+    char *newArgs[3]; // Space for rearranged args
+    int i = 1, textLength = 0, pos = 1;
+    bool reWrite = false; // => true:echowrite || false:echoppend
+    char *echoToken; // => catches the token ">" or ">>" accordingly
+
+    //checks if send to echowrite or echoppend and catches token
+    while(args[pos]){
+        if(strcmp(args[pos], ">") == 0){
+            reWrite = true;
+            echoToken = args[pos];
+            break;
+        }
+        else if(strcmp(args[pos], ">>") == 0){
+            echoToken = args[pos];
+            break;
+        }
+        pos++;
+    }
+
+    // Find the position of ">>" or ">"
+    while (args[i] && strcmp(args[i], echoToken) != 0) {
+        textLength += strlen(args[i]) + 1; // +1 for spaces
+        i++;
+    }
+
+    // missing of src filename path
+    if (!args[i] || !args[i + 1]) {
+        fprintf(stderr, "Invalid syntax: missing filename after %s\n",echoToken);
+        return;
+    }
+
+    // Allocate memory for the merged text
+    newArgs[0] = malloc(textLength);
+    if (!newArgs[0]) {
+        perror("Memory allocation failed");
+        return;
+    }
+    
+    // Merge the words into a single string
+    newArgs[0][0] = '\0';  // Initialize empty string
+    for (int j = 1; j < i; j++) {
+        strcat(newArgs[0], args[j]);
+        if (j < i - 1) strcat(newArgs[0], " "); // Add space between words
+    }
+
+    // Set the filename
+    newArgs[1] = args[i + 1];
+
+    // Ensure NULL termination for execvp compatibility
+    newArgs[2] = NULL;
+
+    if(reWrite){
+        echowrite(newArgs);
+    }
+    else if(!reWrite){
+        echoppend(newArgs);
+    }
+    free(args);
+    free(newArgs[0]);
+}
+
 
 // ---------------------------------------
 // function that manage the commands according to the arguments
@@ -570,6 +650,11 @@ bool executeCommand(char *input) {
             splitByPipe(args);
             return true;
         }
+        else if(strcmp(args[count], ">>") == 0 || strcmp(args[count], ">") == 0){
+            // ive noticed you meant that the command would execute even without quotes so ive made it like so in a different way from the previous command
+            echoSplit(args);
+            return true;
+        }
         count++;
     }
     // otherwise execute command
@@ -584,8 +669,6 @@ bool executeCommand(char *input) {
         delete(args);
     } else if (strcmp(args[0], "mv") == 0) {
         move(args);
-    } else if (strcmp(args[0], "echo") == 0) {
-        echoppend(args);
     } else {
         pid_t pid = fork();
         if (pid == 0) {
