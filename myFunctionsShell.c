@@ -6,6 +6,7 @@
 #include <sys/wait.h>
 #include <sys/stat.h>
 #include <dirent.h>
+#include <fcntl.h>
 #include "myFunctionsShell.h"
 
 
@@ -423,6 +424,28 @@ void move(char **args) {
     }
 }
 
+// ----------------------------
+// 
+// ----------------------------
+void echoppend(char **args) {
+    if(strcmp(args[2], ">>") != 0){
+        fprintf(stderr, "Usage: <text> should be inside of a quotes\n");
+        return;
+    }
+    if (args[1] == NULL || args[3] == NULL) {
+        fprintf(stderr, "Usage: echo <text> >> <file>\n");
+        return;
+    }
+    int fd = open(args[3], O_WRONLY | O_CREAT | O_APPEND, 0644);
+    if (fd == -1) {
+        perror("echo append error");
+        return;
+    }
+    write(fd, args[1], strlen(args[1]));
+    write(fd, "\n", 1);
+    close(fd);
+}
+
 // ---------------------------------------------------------------------------------------------------------------------------------------
 // Main execution for the commands
 // ---------------------------------------------------------------------------------------------------------------------------------------
@@ -528,6 +551,7 @@ void splitByPipe(char **tokens) {
     free(rightArgs);
 }
 
+
 // ---------------------------------------
 // function that manage the commands according to the arguments
 // ---------------------------------------
@@ -560,6 +584,8 @@ bool executeCommand(char *input) {
         delete(args);
     } else if (strcmp(args[0], "mv") == 0) {
         move(args);
+    } else if (strcmp(args[0], "echo") == 0) {
+        echoppend(args);
     } else {
         pid_t pid = fork();
         if (pid == 0) {
