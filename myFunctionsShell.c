@@ -460,6 +460,25 @@ void echowrite(char **args) {
     close(fd);
 }
 
+void _read(char **args) {
+    if (args[1] == NULL) {
+        fprintf(stderr, "Usage: read <file>\n");
+        return;
+    }
+    FILE *file = fopen(args[1], "r"); // => open the file for reading the content
+    if (!file) { // if couldn't open file for reading then return error
+        perror("read error");
+        return;
+    }
+    
+    char ch;
+    while ((ch = fgetc(file)) != EOF) {
+        // => reads a file character by character using fgetc(file) until it reaches the end of the file (EOF)
+        putchar(ch);// => prints the character to the console
+    }
+    fclose(file);
+}
+
 // ---------------------------------------------------------------------------------------------------------------------------------------
 // Main execution for the commands
 // ---------------------------------------------------------------------------------------------------------------------------------------
@@ -651,7 +670,6 @@ bool executeCommand(char *input) {
             return true;
         }
         else if(strcmp(args[count], ">>") == 0 || strcmp(args[count], ">") == 0){
-            // ive noticed you meant that the command would execute even without quotes so ive made it like so in a different way from the previous command
             echoSplit(args);
             return true;
         }
@@ -669,6 +687,8 @@ bool executeCommand(char *input) {
         delete(args);
     } else if (strcmp(args[0], "mv") == 0) {
         move(args);
+    } else if (strcmp(args[0], "read") == 0) {
+        _read(args);
     } else {
         pid_t pid = fork();
         if (pid == 0) {
