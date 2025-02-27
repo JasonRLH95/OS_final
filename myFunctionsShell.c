@@ -15,6 +15,7 @@
 // ----------------------------------------------
 // managing input from user terminal
 // ----------------------------------------------
+
 char *inputFromUser() {
     char ch;
     int len = 0;
@@ -38,7 +39,8 @@ char *inputFromUser() {
 // ---------------------------------------
 // the loading bar effect on the start and at the end of the program
 // ---------------------------------------
-void loadingBar(int step, int totalSteps, char* header) {
+
+void loadingBar(int step, int totalSteps, char *header) {
     printf("\033[H\033[J");
 
     printf("\033[1;35m");
@@ -64,6 +66,7 @@ void loadingBar(int step, int totalSteps, char* header) {
 // ---------------------------------------
 // the picel art displayed on the start of the program
 // ---------------------------------------
+
 void printPixelArt() {
     // initial sketch
     char *art[] = {
@@ -73,16 +76,26 @@ void printPixelArt() {
         "  L      J   J     R  R    H   H ",
         "  LLLLL   JJJ      R   R   H   H ",
     };
+    char *greetings[] = {
+        "   =>   | \033[1;35mShell Started!\033",
+        "   =>   | ",
+        "   =>   | \033[1;34mYou can type any shell command\033",
+        "   =>   | \033[0;33m  or\033",
+        "   =>   | \033[1;36mType 'exit' to quit.\033",
+    };
     int rows = sizeof(art) / sizeof(art[0]);
     // the actual print of the sketch
     for (int i = 0; i < rows; i++) {
-        printf("\033[1;31m%s\n", art[i]);
+        printf("\033[1;31m%s", art[i]);
+        printf("%s\n", greetings[i]);
     }
+    puts("\n");
 }
 
 // ---------------------------------------
 // the initial function called when the program begin, calling the loadingBar function, the printPixelArt function and print few welcome lines
 // ---------------------------------------
+
 void welcome() {
     // the actual effect for the loading bar according to steps and sleep effect between each step
     int totalSteps = 100;
@@ -93,11 +106,7 @@ void welcome() {
     printf("\n\n");
     // creates the pixel art
     printPixelArt();
-
-    printf("\n\033[1;35mShell Started!\033\n");
-    printf("\033[1;34mYou can type any shell command\033\n");
-    printf("\033[0;33m  or\033\n");
-    printf("\033[1;36mType 'exit' to quit.\033\n\n\n");
+    
     while(1){
         getLocation();
 
@@ -116,6 +125,7 @@ void welcome() {
 // ---------------------------------------
 // function that stops the program
 // ---------------------------------------
+
 void logout(){
     // closing the terminal - loading bar effect
     for (int i = 1; i <= 100; i++) {
@@ -128,6 +138,7 @@ void logout(){
 // ---------------------------------------
 // function to get the current location of the program
 // ---------------------------------------
+
 void getLocation() {
     char location[256];
     char hostname[256];
@@ -170,6 +181,7 @@ void getLocation() {
 // ----------------------------
 // handle cd command - change directory
 // ----------------------------
+
 void cd(char **args) {
     if (args[1] == NULL) {
         fprintf(stderr, "Error: No directory specified\n");
@@ -188,6 +200,7 @@ void cd(char **args) {
 // ----------------------------
 // for cp command - copy file handling
 // ----------------------------
+
 void copyFile(char *src, char *dest) {
     FILE *source = fopen(src, "rb");// => open file to read
     if (source == NULL) {
@@ -216,6 +229,7 @@ void copyFile(char *src, char *dest) {
 // ----------------------------
 // for cp command - copy directory handling
 // ----------------------------
+
 void copyDirectory(char *src, char *dest) {
     struct stat st;// => system structure that stores information about a file (e.g., size, permissions, type, timestamps).
     if (stat(dest, &st) == -1) {// => set the pointer st to the destination path, if the stat of it is -1 then the path isn't exist
@@ -258,6 +272,7 @@ void copyDirectory(char *src, char *dest) {
 // ----------------------------
 // handle cp command - copy
 // ----------------------------
+
 void cp(char **args) {
     // must include source and destination provided
     if (args[1] == NULL || args[2] == NULL) {
@@ -288,6 +303,7 @@ void cp(char **args) {
 // ----------------------------
 // handle rm -r command when a directory - remove recursively
 // ----------------------------
+
 void recursiveDelete(char *path) {
     
     struct stat st;
@@ -337,6 +353,7 @@ void recursiveDelete(char *path) {
 // ----------------------------
 // handle rm command - remove
 // ----------------------------
+
 void delete(char **args){
     // if the command is only "rm /path" then check if directory -> if so then return error, if a regular file then delete it
     if(args[2] == NULL){
@@ -370,6 +387,7 @@ void delete(char **args){
 // handle pipe - example: the command "ls -l | grep g"
 // creates two child processes, one runs "ls -l" and sends its output into a pipe, the other reads from that pipe and runs grep g
 // ----------------------------
+
 void mypipe(char **argv1, char **argv2){
     
     int fd[2];
@@ -414,6 +432,7 @@ void mypipe(char **argv1, char **argv2){
 // function that moves a file/directory from src to dest path,
 // its copying the src content to the dest position and then delete the src
 // ----------------------------
+
 void move(char **args) {
     if (args[1] == NULL || args[2] == NULL) {// => make sure to have src and dest paths
         fprintf(stderr, "Usage: mv <source> <destination>\n");
@@ -427,6 +446,7 @@ void move(char **args) {
 // ----------------------------
 // append a text inside a txt file without erasing the previous content
 // ----------------------------
+
 void echoppend(char **args) {
     if (args[0] == NULL || args[1] == NULL) {
         fprintf(stderr, "Usage: echo <text> >> <file>\n");
@@ -445,6 +465,7 @@ void echoppend(char **args) {
 // ----------------------------
 // write a text inside a txt file and erasing the previous content
 // ----------------------------
+
 void echowrite(char **args) {
     if (args[0] == NULL || args[1] == NULL) {
         fprintf(stderr, "Usage: echo <text> > <file>\n");
@@ -463,6 +484,7 @@ void echowrite(char **args) {
 // ----------------------------
 // read the file and print his content to the console
 // ----------------------------
+
 void _read(char **args) {
     if (args[1] == NULL) {
         fprintf(stderr, "Usage: read <file>\n");
@@ -485,6 +507,7 @@ void _read(char **args) {
 // ----------------------------
 // count the words/ lines of the file
 // ----------------------------
+
 void wordCount(char **args) {
     if (args[1] == NULL || args[2] == NULL) {
         fprintf(stderr, "Usage: wc -l/-w <file>\n");
@@ -531,6 +554,7 @@ void wordCount(char **args) {
 // ---------------------------------------
 // function that get the input from the user and split it into arguments
 // ---------------------------------------
+
 char **splitInput(char *input) {
     int bufsize = 64;
     int position = 0;
@@ -594,6 +618,7 @@ char **splitInput(char *input) {
 // ---------------------------------------
 // if arguments containing a pipe symbol then split the arguments array into two arguments arrays
 // ---------------------------------------
+
 void splitByPipe(char **tokens) {
     char **leftArgs = NULL;
     char **rightArgs = NULL;
@@ -632,6 +657,7 @@ void splitByPipe(char **tokens) {
 // ---------------------------------------
 // if arguments containing the >> or > symbols then rearrange the arguments array to the form: [<text>,<path>]
 // ---------------------------------------
+
 void echoSplit(char **args){
 
     char *newArgs[3]; // Space for rearranged args
@@ -699,6 +725,7 @@ void echoSplit(char **args){
 // ---------------------------------------
 // function that manage the commands according to the arguments
 // ---------------------------------------
+
 bool executeCommand(char *input) {
     char **args = splitInput(input);
     
