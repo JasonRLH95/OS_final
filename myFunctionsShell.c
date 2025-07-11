@@ -741,7 +741,7 @@ bool executeCommand(char *input) {
             splitByPipe(args);
             return true;
         }
-        else if(strcmp(args[count], ">>") == 0 || strcmp(args[count], ">") == 0){
+        else if(strcmp(args[0], "echo") == 0 && (strcmp(args[count], ">>") == 0 || strcmp(args[count], ">") == 0)){
             echoSplit(args);
             return true;
         }
